@@ -98,6 +98,7 @@ class TrafficMonitor:
         ensure_logs()
         self.sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(0x0003))
         self.sock.bind((interface, 0))
+        self.sock.setblocking(False)
         signal.signal(signal.SIGINT, self.stop)
         signal.signal(signal.SIGTERM, self.stop)
 
