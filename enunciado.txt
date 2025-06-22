@@ -1,0 +1,163 @@
+Laboratorio de Redes de Computadores
+Trabalho Final
+Monitor de Trafego de Rede em Tempo Real
+
+Objetivo
+
+O objetivo geral deste trabalho e desenvolver uma ferramenta para moni
+toramento de trafego de rede em tempo real utilizando raw sockets. A ferra
+menta deve ser capaz de capturar, interpretar e classi car pacotes de rede, 
+alem de fornecer uma interface do usuario simples para visualizar contadores
+e estatsticas de trafego de rede e ao mesmo tempo escrever um historico dos
+pacotes recebidos em um arquivo de log.
+Os objetivos especificos incluem:
+ ˆ Desenvolvimento de uma aplicacao usando sockets raw;
+ ˆ Estudo do funcionamento dos protocolos de rede e do relacionamento
+ entre as camadas;
+ ˆ Entender como os pacotes de dados sao estruturados e como eles podem
+ ser interpretados para extrair informacoes uteis;
+ ˆ Entender o trafego de uma rede local e os tipos de protocolos normal
+mente trafegados;
+ ˆ Utilizar uma estrutura de rede já definida como parte do problema.
+Descricao
+Voce foi contratado para desenvolver uma aplicacao que devera analisar o
+trafego de uma rede com uma estrutura onde um conjunto de clientes acessam
+a internet por meio de um servidor proxy. Tanto os clientes, quanto o proxy,
+residem na mesma LAN. A unica forma dos clientes terem acesso a rede
+externa e por meio de um programa que atua como um cliente do proxy, o
+qual encapsula o trafego dos clientes em pacotes IP com informacoes forjadas,
+para maior seguranca. O servidor proxy ira desencapsular o trafego de cada
+cliente e encaminhar o mesmo, atuando como um roteador. Infelizmente,
+voce nao possui controle sobre a estrutura da rede, portanto para analisar
+o trafego sera necessario desenvolver uma aplicacao para monitoramento em
+tempo real, que executara na maquina que atua como servidor proxy.
+O monitor de trafego de rede em tempo real a ser desenvolvido deve ser
+capaz de identificar e classificar diferentes tipos de pacotes de dados que
+passam pela rede. Isso inclui identificar protocolos de rede como IP, ARP,
+TCP, UDP, ICMP, etc., bem como origem, destino e tamanho dos pacotes.
+O programa a ser desenvolvido deve possuir uma interface modo texto que
+apresenta contadores para cada tipo de pacote recebido. Para cada protocolo,
+deve apresentar um conjunto de informacoes que serao mantidos em arquivos
+de log do tipo .csv, para as camadas 2, 3 e 4 da pilha de procotolos TCP/IP.
+A interface a ser monitorada e a interface virtual tun0 no servidor proxy,
+onde o trafego dos pacotes de todos os clientes pode ser interceptado.
+O arquivo de log para camada de enlace (camada2.csv) deve ter as seguintes
+colunas:
+ ˆ Data e hora que o quadro foi capturado (ex: 2023-06-05 20:43:10);
+ ˆ Endereco MAC de origem (ex: 02:42:d3:0c:8a:3e);
+ ˆ Endereco MAC de destino;
+ ˆ Protocolo que o quadro carrega (EtherType) no formato hexadecimal
+ (ex: 0x0800);
+ ˆ Tamanho total do quadro em bytes.
+O arquivo de log para o protocolo IP na camada de rede (camada3.csv)
+deve ter as seguintes colunas:
+ ˆ Data e hora que o pacote foi capturado;
+ ˆ Nome do protocolo (ex: IPv4 ou IPv6);
+ ˆ Endereco IP de origem (ex: 100.114.7.75, fe80::ad3e:46fc:abf7:55c9);
+ ˆ Endereco IP de destino;
+ ˆ Numero identificador do protocolo que esta sendo carregado no pacote;
+ ˆ Tamanho total do pacote em bytes
+O arquivo de log para camada de transporte (camada4.csv) deve ter as
+seguintes colunas:
+ ˆ Data e hora que o pacote foi capturado;
+ ˆ Nome do protocolo (ex: TCP, UDP, etc.);
+ ˆ Endereco IP de origem;
+ ˆ Porta de origem (ex: 8080);
+ ˆ Endereco IP de destino;
+ ˆ Porta de destino;
+ ˆ Tamanho total do pacote em bytes.
+Os arquivos de log devem ser atualizados em tempo real e a qualquer
+momento deve ser possvel dar um cat para visualizar o que foi capturado
+ate o momento.
+
+Tunel de trafego
+
+O tunel ja utilizado na empresa que solicitou os seus servicos possui uma
+arquitetura ilustrada no diagrama:
+
+Arquitetura dos clientes:
+
++-----------------+                                       +--------------+
+|                 |  tráfego     +-------+  tráfego       |              |  tráfego mascarado
+|  Aplicações     | -----------> | tun0  | ----------->   |  programa    |  ------------->
+|  de usuário     | <----------- +-------+ <-----------   |  túnel       | <-------------
+|                 |         (interface virtual)           |  (cliente)   |   internet
++-----------------+                                       +--------------+   restrita
+                             tun0:172.31.66.xxx                            eth0:10.xxx.xxx.xxx
+
+
+Arquitetura do servidor proxy:
+
+                     +-----------------+
+tráfego mascarado    |                 |  tráfego      +-------+        NAT e roteamento
+-------------------> |  programa       | ------------> | tun0  | --------------------------->
+<------------------- |  túnel          | <------------ +-------+ <---------------------------
+  internet restrita  |  (proxy)        |           (interface virtual)      internet!
+                     +-----------------+
+eth0:10.xxx.xxx.xxx                                 tun0:172.31.66.1
+
+
+Como apresentado, o trafego das aplicacoes dos clientes passa por um
+programa tunel por meio de uma interface virtual. O programa tunel en
+capsula e mascara o trafego e injeta o mesmo na interface fsica, a qual esta
+conectada a uma LAN. O servidor proxy (tunel) recebe o trafego encapsu
+lado, desencapsula o mesmo e o injeta em uma interface virtual. A partir
+desse ponto, a maquina onde esta executando o proxy utiliza uma regra de
+iptables (com masquerading) para implementar uma NAT, e roteia o trafego
+para a internet
+
+Configuração do tunel
+
+Para compilar o programa que implementa o tunel, e necessario ter insta
+lado em um ambiente Linux os pacotes build-essentials e iptables. No contai
+ner da disciplina nao e necessario instalar nenhuma dependencia. Apos des
+compactar os fontes, execute o comando make. E importante que o ambiente
+onde o tunel ira executar seja uma LAN, composta por diversos computa
+dores Linux conectados a mesma rede (como o LabRedes). A LAN pode ser
+implementada por computadores fsicos, VMs ou containers.
+
+Executando o tunel no modo servidor proxy
+
+Para carregar o tunel no modo proxy, execute o comando abaixo. Nao e
+necessario usar sudo caso a maquina seja um container. Para saber o nome
+da interface e seu IP, utilize o comando sudo ifcon g ou ip addr.
+
+$ sudo ./traffic_tunnel <if do servidor>-s <ip do servidor>
+
+Apos a carga do programa tunel, veri que se a interface tun0 foi criada
+e se o roteamento foi habilitado no kernel.
+
+Executando o tunel no modo cliente
+
+Para carregar o tunel no modo cliente, utilize um script diferente para cada
+cliente, e execute o comando abaixo. Sao fornecidos 2 scripts como referencia.
+Assim como no servidor proxy, e necessario saber o nome da interface e o seu IP.
+
+$ sudo ./traffic_tunnel <if do cliente>-c <ip do cliente>-t client1.sh
+
+Container Linux (opcional)
+
+O container pode ser instalado com o comando abaixo (substitua podman
+por docker caso esteja utilizando Docker). Isso pode ser feito em maquinas
+Linux ou Windows.
+
+$ podman pull ghcr.io/sjohann81/labredes:latest
+
+Instrucoes sobre o uso de containers sao apresentadas em m https://github.com/sjohann81/linux_container.
+
+Resultados e entrega
+
+Este trabalho devera ser realizado em duplas ou trios e apresentado no
+dia 23/06. E importante que todos os grupos estejam aptos a apresentarem
+o trabalho a partir do incio da aula. Qualquer linguagem de programacao
+podera ser utilizada para o desenvolvimento. Para a entrega, e esperado que
+apenas um dos integrantes envie pelo Moodle, ate a data e hora especi cadas,
+um arquivo .tar.gz ou .zip com os nomes dos integrantes, contendo o codigo
+fonte completo do projeto e um relatorio descrevendo a implementacao. E
+importante que no relatorio seja apresentada uma analise, incluindo o uso
+de screenshots que demonstrem o funcionamento do projeto no ambiente de
+rede (fsico ou virtual).
+Importante: Nao serao aceitos trabalhos entregues fora do prazo. Tra
+balhos que nao compilam ou nao executam nao serao avaliados. Trabalhos
+que estiverem rodando no mesmo host ou que nao utilizem sockets raw serao
+desconsiderados
