@@ -15,8 +15,13 @@ ETAPA 1 – Levantar o servidor (proxy)
 ------------------------------------
 Terminal 1:
 ```
-docker run -d --name proxy --privileged --network host --device /dev/net/tun ^
-           -v ${PWD}:/work -w /work ghcr.io/sjohann81/labredes:latest sleep infinity
+docker network create labnet --subnet 10.10.0.0/24
+docker run -d --name proxy `
+>>   --hostname proxy `
+>>   --network labnet --ip 10.10.0.1 `
+>>   --cap-add=NET_ADMIN --cap-add=NET_RAW `
+>>   --device /dev/net/tun `
+>>   ghcr.io/sjohann81/labredes:latest sleep infinity
 ```
 Entrar no contêiner e compilar o túnel:
 ```
@@ -36,6 +41,10 @@ próxima etapa.
 ETAPA 2 – Iniciar o monitor de tráfego
 -------------------------------------
 Terminal 2:
+
+docker cp .\T2-LABREDES\src\monitor.py proxy:/root/monitor.py
+
+docker cp .\T2-LABREDES\traffic_tunnel client1:/root/traffic_tunnel
 ```
 docker exec -it proxy bash
 ```
@@ -52,8 +61,12 @@ ETAPA 3 – Levantar um cliente
 ----------------------------
 Terminal 3:
 ```
-docker run -d --name client1 --privileged --device /dev/net/tun ^
-           -v ${PWD}:/work -w /work ghcr.io/sjohann81/labredes:latest sleep infinity
+docker run -d --name client1 `
+>>   --hostname client1 `
+>>   --network labnet `
+>>   --cap-add=NET_ADMIN --cap-add=NET_RAW `
+>>   --device /dev/net/tun `
+>>   ghcr.io/sjohann81/labredes:latest sleep infinity
 ```
 Entrar no contêiner do cliente:
 ```
